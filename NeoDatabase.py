@@ -7,15 +7,18 @@ import os
 class NeoDatabase:
 
     def __init__(self, database_directory: str, database_password: str):
-        # Initialize the database directory json file
-        if 'datasets.json' not in os.listdir():
-            with open('datasets.json', 'wt', encoding='utf8') as datasets_registry:
-                dic = {}
-                json.dump(dic, datasets_registry)
-        with open('datasets.json', 'rt') as datasets_registry:
-            self.data_sets = json.load(datasets_registry)
-
         self.database_directory = database_directory
+        self.data_sets_registry_directory = database_directory + '/data_sets.json'
+
+        # Initialize the database directory json file
+        if 'data_sets.json' not in os.listdir(self.database_directory):
+            print(os.listdir(self.database_directory))
+            with open(self.data_sets_registry_directory, 'x', encoding='utf8') as data_sets_registry:
+                dic = {}
+                json.dump(dic, data_sets_registry)
+        with open(self.data_sets_registry_directory, 'rt', encoding='utf8') as data_sets_registry:
+            self.data_sets = json.load(data_sets_registry)
+
         self.graph = Graph(password=database_password)
         self.current_dataset = ''
 
@@ -23,13 +26,16 @@ class NeoDatabase:
         if not self.current_dataset:
             self.unload_current_dataset()
         if dataset_name in self.data_sets:
-            self.graph.run('call apoc.import.graphml(\'{0}\', {})'.format(self.data_sets[dataset_name]))
+            self.graph.run('call apoc.import.graphml(\'%s\', {})' % self.data_sets[dataset_name])
         else:
             Exception('No dataset with the given name')
 
     def unload_current_dataset(self):
         self.graph.delete_all()
         self.current_dataset = ''
+
+    def apply_method(self):
+        pass
 
     def save_dataset(self, dataset_name: str, directory: str):
         """
@@ -42,13 +48,20 @@ class NeoDatabase:
         try:
             new_directory = self.database_directory + '/import'
             copy_file(directory, new_directory)
-            self.data_sets[dataset_name] = new_directory
-
+            self.data_sets[dataset_name] = directory.split('/')[-1]
+            with open(self.data_sets_registry_directory, 'wt', encoding='utf8') as data_sets_registry:
+                json.dump(self.data_sets, data_sets_registry)
             return True
-        except Exception:
+        except FileNotFoundError:
+            print('Database not found in the given directory')
             return False
 
 
 if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
-    database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml')
+    # database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml')
+    # database.save_dataset('Airlines', 'C:/Users/Administrator/Desktop/airlines.graphml')
+
+    # database.load_dataset('Disney')
+    database.unload_current_dataset()
+    database.load_dataset('Airlines')
