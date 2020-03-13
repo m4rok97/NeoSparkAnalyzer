@@ -14,6 +14,9 @@ class SparkAnalyzer:
         sum = sc.parallelize(range(100)).reduce(lambda x, y: x + y)
         print(sum)
 
+    def glance(self):
+
+
 if __name__ == '__main__':
     analyzer = SparkAnalyzer()
     analyzer.analyze()
