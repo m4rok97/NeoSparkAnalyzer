@@ -14,7 +14,6 @@ class NeoDatabase:
 
         # Initialize the database directory json file
         if 'data_sets.json' not in os.listdir(self.database_directory):
-            print(os.listdir(self.database_directory))
             with open(self.data_sets_registry_directory, 'x', encoding='utf8') as data_sets_registry:
                 dic = {}
                 json.dump(dic, data_sets_registry)
@@ -39,13 +38,17 @@ class NeoDatabase:
 
     def apply_method(self, method_name='Louvain'):
         relationship_name = self.data_sets[self.current_dataset]['relationship_name']
-        if method_name == 'Louvain':
-            return self.graph.run('call algo.louvain.stream(null, "%s") yield nodeId, community' % relationship_name).data()
-        elif method_name == 'UnionFind':
-            return self.graph.run('call algo.unionFind.stream(null, "%s") yield nodeId, setId' % relationship_name).data()
-        elif method_name == 'LabelPropagation':
-            return self.graph.run('call algo.labelPropagation.stream(null, "%s", { iterations: 10}) yield nodeId, label' % relationship_name).data()
 
+        if method_name == 'Louvain':
+            self.graph.run('call algo.louvain.stream(null, "%s") yield nodeId, community match (n) where id(n) = nodeId set n.community = community' % relationship_name).data()
+        elif method_name == 'UnionFind':
+            self.graph.run('call algo.unionFind.stream(null, "%s") yield nodeId, setId match (n) where id(n) = nodeId set n.setId = setId' % relationship_name).data()
+        elif method_name == 'LabelPropagation':
+            self.graph.run('call algo.labelPropagation.stream(null, "%s", { iterations: 10}) yield nodeId, label match (n) where id(n) = nodeId set n.setId = setId' % relationship_name).data()
+
+        self.save_nodes_attributes()
+
+        # call algo.louvain.stream(null, "RELATED") yield nodeId, community match (n) where id(n) = nodeId set n.communiy = community
 
     def save_dataset(self, dataset_name: str, directory: str, relationship_name: str):
         """
@@ -66,6 +69,25 @@ class NeoDatabase:
             print('Database not found in the given directory')
             return False
 
+    def get_number_of_communities(self):
+        return self.graph.run('match (n) return count (distinct n.community)')
+
+    def get_communities(self):
+        for i in range(self.get_number_of_communities()):
+            yield self.graph.run('match (n) where n.community = %s return n' % i)
+
+    def get_neighbors_of_node(self, node_id: int):
+        return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
+
+    def get_nodes_attributes(self):
+        return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
+
+    def save_nodes_attributes(self):
+        print('Attributes')
+        print(self.get_nodes_attributes())
+        self.data_sets[self.current_dataset]['attributes'] = self.get_nodes_attributes()
+        with open(self.data_sets_registry_directory, 'wt', encoding='utf8') as data_sets_registry:
+            json.dump(self.data_sets, data_sets_registry)
 
 if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
@@ -76,5 +98,6 @@ if __name__ == '__main__':
     # database.unload_current_dataset()
     database.load_dataset('Airlines')
 
-    louvain_result = database.apply_method('UnionFind')
-    print(louvain_result)
+    print(database.current_dataset)
+    print(database.data_sets)
+    louvain_result = database.apply_method('Louvain')
