@@ -5,7 +5,6 @@ import json
 import os
 
 
-
 class NeoDatabase:
 
     def __init__(self, database_directory: str, database_password: str):
@@ -70,17 +69,33 @@ class NeoDatabase:
             return False
 
     def get_number_of_communities(self):
-        return self.graph.run('match (n) return count (distinct n.community)')
+        return self.graph.run('match (n) return count (distinct n.community)').evaluate()
+
+    def get_communities_list(self):
+        return [self.get_community(i).to_data_frame() for i in range(self.get_number_of_communities())]
 
     def get_communities(self):
         for i in range(self.get_number_of_communities()):
-            yield self.graph.run('match (n) where n.community = %s return n' % i)
+            result = self.get_community(i).data()
+            yield (result, i)
 
     def get_neighbors_of_node(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
 
     def get_nodes_attributes(self):
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
+
+    def get_community(self, community: int):
+        return self.graph.run('match (n) where n.community = %s return n' % community)
+
+    def get_community_len(self, community: int):
+        return self.graph.run('match (n) where n.community = %s return count(n)' % community)
+
+    def get_attribute_from_community_nodes(self, community: int, attribute: str):
+        return self.graph.run('match (n) where n.community = %s return n.%s as attribute, id(n) as nodeId' % (community, attribute))
+
+    def update_data(self, data):
+        self.graph.push(data)
 
     def save_nodes_attributes(self):
         print('Attributes')
@@ -91,13 +106,17 @@ class NeoDatabase:
 
 if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
-    database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml', '_default')
-    database.save_dataset('Airlines', 'C:/Users/Administrator/Desktop/airlines.graphml', 'RELATED')
+    # database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml', '_default')
+    # database.save_dataset('Airlines', 'C:/Users/Administrator/Desktop/airlines.graphml', 'RELATED')
 
     # database.load_dataset('Disney')
     # database.unload_current_dataset()
-    database.load_dataset('Airlines')
+    # database.load_dataset('Airlines')
 
-    print(database.current_dataset)
-    print(database.data_sets)
-    louvain_result = database.apply_method('Louvain')
+    # print(database.current_dataset)
+    # print(database.data_sets)
+    # louvain_result = database.apply_method('Louvain')
+
+    for community in database.get_communities():
+        print(community[0])
+        break

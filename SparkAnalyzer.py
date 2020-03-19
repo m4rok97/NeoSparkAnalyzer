@@ -12,12 +12,17 @@ class SparkAnalyzer:
         self.context = pyspark.SparkContext('local[*]', appName="SparkAnalyzer")
 
     def analyze(self):
-        sum = self.context.parallelize(self.powGenerator(1, 10)).reduce(lambda x, y: x + y)
+        sum = self.context.parallelize(self.f()).reduce(lambda x, y: x + y)
         print(sum)
+
 
     def powGenerator(self, base: int, limit: int):
         for i in range(10):
             yield base ** i
+
+    def f(self):
+        for i in range(20):
+            yield i
 
     def suma(self):
         sum = 0
@@ -25,10 +30,8 @@ class SparkAnalyzer:
             sum += i
         print(sum)
 
-    def get
-
-    def glance(self, cummunities, selected_attributes):
-
+    def glance(self ,selected_attributes):
+        communities_amount = self
 
 
 if __name__ == '__main__':
