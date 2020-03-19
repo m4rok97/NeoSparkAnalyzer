@@ -68,6 +68,9 @@ class NeoDatabase:
             print('Database not found in the given directory')
             return False
 
+    def get_node_by_id(self, node_id: int):
+        return self.graph.run('match (n) where id(n) = %s return n' % node_id).evaluate()
+
     def get_number_of_communities(self):
         return self.graph.run('match (n) return count (distinct n.community)').evaluate()
 
@@ -77,7 +80,7 @@ class NeoDatabase:
     def get_communities(self):
         for i in range(self.get_number_of_communities()):
             result = self.get_community(i).data()
-            yield (result, i)
+            yield result
 
     def get_neighbors_of_node(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
@@ -86,7 +89,7 @@ class NeoDatabase:
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
 
     def get_community(self, community: int):
-        return self.graph.run('match (n) where n.community = %s return n' % community)
+        return self.graph.run('match (n) where n.community = %s return n.x as x, n.y as y, id(n) as nodeId' % community)
 
     def get_community_len(self, community: int):
         return self.graph.run('match (n) where n.community = %s return count(n)' % community)
