@@ -17,7 +17,7 @@ class NeoSparkAnalyzer:
         pass
 
     def select_attributes(self, attributes_index: list):
-        return [database.data_sets[database.current_dataset]['attributes'][i] for i in list]
+        return [self.database.data_sets[self.database.current_dataset]['attributes'][i] for i in list]
 
     def set_selected_attributes(self, attributes):
         self.select_attributes = attributes
@@ -31,6 +31,7 @@ class NeoSparkAnalyzer:
             node_i_attribute_val = node_i['attribute']
             nodes_j = self.database.get_attribute_from_community_nodes(community, attribute)
             for node_j in nodes_j:
+
                 node_j_id = node_j['nodeId']
                 node_j_attribute_val = node_j['attribute']
                 if node_i_id != node_j_id:
@@ -40,21 +41,13 @@ class NeoSparkAnalyzer:
     def shpw(self):
        print ([x for x in self.database.get_communities()])
 
+    def get_communities_with_method(self, method_name: str):
+        self.database.apply_method(method_name)
+
     def glance(self, selected_attributes: list):
-        communities_amount = self.database.get_number_of_communities()
         anomaly_score = []
-        print('ejecuta glance')
-        for community in range(communities_amount):
-            dict_values = {}
-            for attribute in selected_attributes:
-                dict_values[attribute] = self.get_average_difference(community, attribute)
-            self.average_differences.append(dict_values)
-        print('diffences')
-        print(self.average_differences)
-        print(list(range(self.database.get_number_of_communities())))
-        result = self.spark_context.parallelize(self.database.get_communities())\
-            .map(glance).collect()
-        print(result)
+        result = self.spark_context.parallelize(self.database.get_communities(selected_attributes))\
+            .map(glance_over_community).collect()
 
         for community in result:
             for node_id, anomaly_score in community:
@@ -62,21 +55,17 @@ class NeoSparkAnalyzer:
                 node['anomalyScore'] = anomaly_score
                 self.database.update_data(node)
 
-    def test(self, id):
-        print(id)
-
-
     def glance_community_analysis(self, community_id):
         print('entra')
         analysis_dict = {}
-        community = self.database.get_community(community_id)
+        community = self.database.get_community_nodes(community_id)
         community_len = self.database.get_community_len(community_id)
         for node_i in community:
             attributes_scores = []
             for attribute in self.selected_attributes:
                 average_difference = self.get_average_difference(community_id, attribute)
                 acc = 0
-                for node_j in self.database.get_community():
+                for node_j in self.database.get_community_nodes():
                     node_i_attribute = node_i[attribute]
                     node_j_attribute = node_j[attribute]
                     difference = abs(node_i_attribute - node_j_attribute)
@@ -91,41 +80,50 @@ class NeoSparkAnalyzer:
             self.database.update_data(node_i)
         return 1
 
+
 def get_average_difference(community: list, attribute: str):
     community_len = len(community)
     acc = 0
+
     for node_i in community:
         node_i_attribute_val = node_i[attribute]
-        node_i_id = node_i['nodeId']
         for node_j in community:
-            node_j_id = node_j['nodeId']
+            print('Attribute')
+            print(attribute)
+            [print('Node data')]
+            print(node_i)
+            print(node_j)
             node_j_attribute_val = node_j[attribute]
+            print('Values')
+            print(node_i_attribute_val)
+            print(node_j_attribute_val)
             acc += abs(node_i_attribute_val - node_j_attribute_val)
     return acc / community_len**2
 
 
 def get_average_differences(community: list):
-    dict = {}
-    for attribute in community[0]:
-        dict[attribute] = get_average_difference(community, attribute)
-    return dict
+    differences = {}
+    for attribute in filter(lambda x: x != 'nodeId', community[0]):
+        differences[attribute] = get_average_difference(community, attribute)
+    return differences
 
 
-
-def glance(community: list):
+def glance_over_community(community: list):
     average_differences = get_average_differences(community)
-    print('average differences')
-    print(average_differences)
     community_len = len(community)
     ans = []
 
     for node_i in community:
+        print('Node')
+        print(node_i)
         attributes_scores = []
-        for attribute in node_i:
+        node_i_id = node_i['nodeId']
+        for attribute in filter(lambda x: x != 'nodeId', node_i):
             average_difference = average_differences[attribute]
             acc = 0
             for node_j in community:
-                if node_i['nodeId'] == node_j['nodeId']:
+                node_j_id = node_j['nodeId']
+                if node_i_id == node_j_id:
                     continue
 
                 node_i_attribute = node_i[attribute]
@@ -150,6 +148,6 @@ def glance(community: list):
 
 if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
-
-    analyzer.glance(['x', 'y'])
-    # analyzer.shpw()
+    analyzer.database.load_dataset('Disney')
+    analyzer.get_communities_with_method('Louvain')
+    analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
