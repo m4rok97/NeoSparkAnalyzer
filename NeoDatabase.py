@@ -3,7 +3,7 @@ from py2neo import Graph
 from utils import *
 import json
 import os
-
+import functools as ft
 
 class NeoDatabase:
 
@@ -36,6 +36,8 @@ class NeoDatabase:
         self.current_dataset = ''
 
     def apply_method(self, method_name='Louvain'):
+        print(self.current_dataset)
+        print(self.data_sets)
         relationship_name = self.data_sets[self.current_dataset]['relationship_name']
 
         if method_name == 'Louvain':
@@ -75,12 +77,11 @@ class NeoDatabase:
         return self.graph.run('match (n) return count (distinct n.community)').evaluate()
 
     def get_communities_list(self):
-        return [self.get_community(i).to_data_frame() for i in range(self.get_number_of_communities())]
+        return [self.get_community_nodes(i).to_data_frame() for i in range(self.get_number_of_communities())]
 
-    def get_communities(self):
+    def get_communities(self, attributes: list):
         for i in range(self.get_number_of_communities()):
-            result = self.get_community(i).data()
-            yield result
+            yield self.get_community_nodes(i, attributes).data()
 
     def get_neighbors_of_node(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
@@ -88,8 +89,11 @@ class NeoDatabase:
     def get_nodes_attributes(self):
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
 
-    def get_community(self, community: int):
-        return self.graph.run('match (n) where n.community = %s return n.x as x, n.y as y, id(n) as nodeId' % community)
+    def get_community_nodes(self, community: int, attributes):
+        select_query = ft.reduce(lambda x, y: x + y, ['n.' + attribute + ' as ' + attribute + ', ' for attribute in attributes])
+        end_select_query = 'id(n) as nodeId '
+        select_query += end_select_query
+        return self.graph.run('match (n) where n.community = %s return ' % community + select_query )
 
     def get_community_len(self, community: int):
         return self.graph.run('match (n) where n.community = %s return count(n)' % community)
