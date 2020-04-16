@@ -151,3 +151,4 @@ if __name__ == '__main__':
     analyzer.database.load_dataset('Disney')
     analyzer.get_communities_with_method('Louvain')
     analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
+    analyzer.database.set_anomaly_label(0.9)

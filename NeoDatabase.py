@@ -26,7 +26,7 @@ class NeoDatabase:
         if not self.current_dataset:
             self.unload_current_dataset()
         if data_set_name in self.data_sets:
-            self.graph.run('call apoc.import.graphml(\'%s\', {})' % self.data_sets[data_set_name]['directory'])
+            self.graph.run('call apoc.import.graphml(\'%s\', {readLabels: true, storeNodeIds: true})' % self.data_sets[data_set_name]['directory'])
             self.current_dataset = data_set_name
         else:
             Exception('No dataset with the given name')
@@ -101,6 +101,9 @@ class NeoDatabase:
     def get_attribute_from_community_nodes(self, community: int, attribute: str):
         return self.graph.run('match (n) where n.community = %s return n.%s as attribute, id(n) as nodeId' % (community, attribute))
 
+    def set_anomaly_label(self, threshold: float):
+        self.graph.run('match (n) where n.anomalyScore > %s set n:Rare' % threshold)
+
     def update_data(self, data):
         self.graph.push(data)
 
@@ -124,6 +127,4 @@ if __name__ == '__main__':
     # print(database.data_sets)
     # louvain_result = database.apply_method('Louvain')
 
-    for community in database.get_communities():
-        print(community[0])
-        break
+    database.graph.delete_all()
