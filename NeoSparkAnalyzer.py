@@ -3,6 +3,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.types import *
 from NeoDatabase import *
 import pyspark
+import numpy as np
 
 
 class NeoSparkAnalyzer:
@@ -31,7 +32,6 @@ class NeoSparkAnalyzer:
             node_i_attribute_val = node_i['attribute']
             nodes_j = self.database.get_attribute_from_community_nodes(community, attribute)
             for node_j in nodes_j:
-
                 node_j_id = node_j['nodeId']
                 node_j_attribute_val = node_j['attribute']
                 if node_i_id != node_j_id:
@@ -42,11 +42,11 @@ class NeoSparkAnalyzer:
        print ([x for x in self.database.get_communities()])
 
     def get_communities_with_method(self, method_name: str):
-        self.database.apply_method(method_name)
+        self.database.apply_community_method(method_name)
 
-    def glance(self, selected_attributes: list):
+    def glance(self, selected_attributes: list, use_feature_selection=False, percentile=0.1):
         anomaly_score = []
-        result = self.spark_context.parallelize(self.database.get_communities(selected_attributes))\
+        result = self.spark_context.parallelize(self.database.get_communities(selected_attributes, use_feature_selection, percentile))\
             .map(glance_over_community).collect()
 
         for community in result:
@@ -80,6 +80,14 @@ class NeoSparkAnalyzer:
             self.database.update_data(node_i)
         return 1
 
+
+
+
+
+
+
+
+#region Statics Methods
 
 def get_average_difference(community: list, attribute: str):
     community_len = len(community)
@@ -145,10 +153,13 @@ def glance_over_community(community: list):
         ans.append((node_i['nodeId'], anomaly_score))
     return ans
 
+#endregion
+
+
 
 if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     analyzer.database.load_dataset('Disney')
     analyzer.get_communities_with_method('Louvain')
-    analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
+    analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'], True)
     analyzer.database.set_anomaly_label(0.9)

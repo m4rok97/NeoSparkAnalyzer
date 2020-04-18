@@ -4,6 +4,9 @@ from utils import *
 import json
 import os
 import functools as ft
+import numpy as np
+from skfeature.utility.construct_W import construct_W
+# import skfeature.function.similarity_based.lap_score as lap_score
 
 class NeoDatabase:
 
@@ -35,7 +38,7 @@ class NeoDatabase:
         self.graph.delete_all()
         self.current_dataset = ''
 
-    def apply_method(self, method_name='Louvain'):
+    def apply_community_method(self, method_name='Louvain'):
         print(self.current_dataset)
         print(self.data_sets)
         relationship_name = self.data_sets[self.current_dataset]['relationship_name']
@@ -79,9 +82,9 @@ class NeoDatabase:
     def get_communities_list(self):
         return [self.get_community_nodes(i).to_data_frame() for i in range(self.get_number_of_communities())]
 
-    def get_communities(self, attributes: list):
+    def get_communities(self, attributes: list, use_laplacian_score=False, percentile=0.1):
         for i in range(self.get_number_of_communities()):
-            yield self.get_community_nodes(i, attributes).data()
+            yield self.get_community_nodes(i, attributes, use_laplacian_score).data()
 
     def get_neighbors_of_node(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
@@ -89,20 +92,56 @@ class NeoDatabase:
     def get_nodes_attributes(self):
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
 
-    def get_community_nodes(self, community: int, attributes):
+    def get_nodes_amount_of_community(self, community: int):
+        return self.graph.run('match (n) where n.community = %s return count(n)' % community).evaluate()
+
+    def get_community_nodes(self, community: int, attributes=[], use_laplacian_score=False, percentile=0.1):
+        if not attributes:
+            attributes = self.get_nodes_attributes()
+
+        if use_laplacian_score:
+            attributes = self.laplacian_score(community, attributes, percentile)
+
         select_query = ft.reduce(lambda x, y: x + y, ['n.' + attribute + ' as ' + attribute + ', ' for attribute in attributes])
         end_select_query = 'id(n) as nodeId '
         select_query += end_select_query
         return self.graph.run('match (n) where n.community = %s return ' % community + select_query )
 
     def get_community_len(self, community: int):
-        return self.graph.run('match (n) where n.community = %s return count(n)' % community)
+        return self.graph.run('match (n) where n.community = %s return count(n)' % community).evaluate()
 
     def get_attribute_from_community_nodes(self, community: int, attribute: str):
         return self.graph.run('match (n) where n.community = %s return n.%s as attribute, id(n) as nodeId' % (community, attribute))
 
     def set_anomaly_label(self, threshold: float):
         self.graph.run('match (n) where n.anomalyScore > %s set n:Rare' % threshold)
+
+    def laplacian_score(self, community:int, attributes: list, percentile=0.1):
+        result = []
+        nodes_amount = self.get_nodes_amount_of_community(community)
+        community_as_matrix = np.empty((nodes_amount, len(attributes)))
+        community_nodes = self.get_community_nodes(community)
+        node_index = 0
+        for node in community_nodes:
+            for attribute_index in range(len(attributes)):
+                community_as_matrix[node_index, attribute_index] = node[attributes[attribute_index]]
+            node_index += 1
+
+        if nodes_amount >= 5:
+            w_matrix = construct_W(community_as_matrix)
+        else:
+            w_matrix = construct_W(community_as_matrix, k=(nodes_amount - 1))
+
+        scores = lap_score(community_as_matrix, W=w_matrix)
+        ranked_attributes = feature_ranking(scores)
+        boundary = len(attributes) * percentile
+
+        for i in range(len(attributes)):
+            if ranked_attributes[i] < boundary:
+                result.append(attributes[i])
+
+        return result
+
 
     def update_data(self, data):
         self.graph.push(data)
@@ -127,4 +166,6 @@ if __name__ == '__main__':
     # print(database.data_sets)
     # louvain_result = database.apply_method('Louvain')
 
-    database.graph.delete_all()
+
+    result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
+    print(result)
