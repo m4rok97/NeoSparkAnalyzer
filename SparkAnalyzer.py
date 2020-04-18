@@ -6,15 +6,30 @@ from operator import add
 import time
 from py2neo import Graph
 
+
+def func(dic: dict):
+    for key in dic:
+        print('aqui')
+        print(dic[key])
+    return 1
+
+
 class SparkAnalyzer:
 
     def __init__(self):
         self.context = pyspark.SparkContext('local[*]', appName="SparkAnalyzer")
 
     def analyze(self):
-        sum = self.context.parallelize(self.f()).reduce(lambda x, y: x + y)
-        print(sum)
+        result = self.context.parallelize([{'asd': 2, 'asdasds': 324}]).map(func).collect()
+        print('aqui')
+        print(result)
+        print(type(result))
 
+    def func(self, l: list):
+        for item in list:
+            for elem in item:
+                print('hola')
+        return 1
 
     def powGenerator(self, base: int, limit: int):
         for i in range(10):
@@ -35,6 +50,8 @@ class SparkAnalyzer:
 
 
 if __name__ == '__main__':
+    # l = [{'asd': 2, 'asdasds': 324}]
+    # func(l)
     analyzer = SparkAnalyzer()
     init = time.time()
     analyzer.analyze()
