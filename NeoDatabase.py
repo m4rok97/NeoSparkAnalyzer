@@ -6,7 +6,8 @@ import os
 import functools as ft
 import numpy as np
 from skfeature.utility.construct_W import construct_W
-# import skfeature.function.similarity_based.lap_score as lap_score
+
+#region NeoDatabase Class
 
 class NeoDatabase:
 
@@ -142,7 +143,6 @@ class NeoDatabase:
 
         return result
 
-
     def update_data(self, data):
         self.graph.push(data)
 
@@ -152,6 +152,10 @@ class NeoDatabase:
         self.data_sets[self.current_dataset]['attributes'] = self.get_nodes_attributes()
         with open(self.data_sets_registry_directory, 'wt', encoding='utf8') as data_sets_registry:
             json.dump(self.data_sets, data_sets_registry)
+
+#endregion
+
+#region Main
 
 if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
@@ -169,3 +173,6 @@ if __name__ == '__main__':
 
     result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
     print(result)
+
+#endregion
+

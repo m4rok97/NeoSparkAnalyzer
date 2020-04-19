@@ -5,6 +5,7 @@ from NeoDatabase import *
 import pyspark
 import numpy as np
 
+# region NeoSaprk Analyzer Class
 
 class NeoSparkAnalyzer:
 
@@ -38,8 +39,8 @@ class NeoSparkAnalyzer:
                     acc += abs(node_i_attribute_val - node_j_attribute_val)
         return acc // community_len
 
-    def shpw(self):
-       print ([x for x in self.database.get_communities()])
+    def show(self):
+        print([x for x in self.database.get_communities()])
 
     def get_communities_with_method(self, method_name: str):
         self.database.apply_community_method(method_name)
@@ -80,31 +81,29 @@ class NeoSparkAnalyzer:
             self.database.update_data(node_i)
         return 1
 
+# endregion
+
+#region Static Methods
 
 
+def communities_warpper(communities, method):
+    for community in communities:
+        yield (community, method)
 
 
+def method_executor(community_and_method: tuple):
+    community, method = community_and_method
 
+    return eval('%s(community)' % method)
 
-
-#region Statics Methods
 
 def get_average_difference(community: list, attribute: str):
     community_len = len(community)
     acc = 0
-
     for node_i in community:
         node_i_attribute_val = node_i[attribute]
         for node_j in community:
-            print('Attribute')
-            print(attribute)
-            [print('Node data')]
-            print(node_i)
-            print(node_j)
             node_j_attribute_val = node_j[attribute]
-            print('Values')
-            print(node_i_attribute_val)
-            print(node_j_attribute_val)
             acc += abs(node_i_attribute_val - node_j_attribute_val)
     return acc / community_len**2
 
@@ -155,11 +154,13 @@ def glance_over_community(community: list):
 
 #endregion
 
-
+#region Main
 
 if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     analyzer.database.load_dataset('Disney')
     analyzer.get_communities_with_method('Louvain')
-    analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'], True)
+    analyzer.glance(['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
     analyzer.database.set_anomaly_label(0.9)
+
+#endregion
