@@ -100,6 +100,10 @@ class NeoDatabase:
         if not attributes:
             attributes = self.get_nodes_attributes()
 
+        if attributes[0] == 'neighborsAmount':
+            return self.graph.run('match (n)--(m) where n.community = %s return count(m) as neighborsAmount, id(n) as '
+                                  'nodeId' % community)
+
         if use_laplacian_score:
             attributes = self.laplacian_score(community, attributes, percentile)
 
