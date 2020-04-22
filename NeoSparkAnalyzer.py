@@ -34,6 +34,8 @@ class NeoSparkAnalyzer:
         anomaly_algorithm = None
         if method == 'Glance':
             anomaly_algorithm = glance
+        if method == 'CADA':
+            anomaly_algorithm = CADA
 
         anomaly_score = []
         result = self.spark_context.parallelize(self.database.get_communities(selected_attributes, use_feature_selection, percentile))\
@@ -54,7 +56,7 @@ if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     analyzer.database.load_dataset('Disney')
     analyzer.get_communities_with_method('Louvain')
-    analyzer.analyze('Glance', ['neighborsAmount'])
+    analyzer.analyze('CADA', ['outerCommunityNeighborsAmount', 'innerCommunityNeighborsAmount'])
     analyzer.database.set_anomaly_label(0.9)
 
 # endregion

@@ -57,4 +57,10 @@ def glance(community: list):
         ans.append((node_i['nodeId'], anomaly_score))
     return ans
 
+
+def CADA(community):
+    ans = []
+    for node in community:
+        ans.append((node['nodeId'], node['outerCommunityNeighborsAmount'] / node['innerCommunityNeighborsAmount']))
+    return ans
 #endregion\

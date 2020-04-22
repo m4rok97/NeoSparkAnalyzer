@@ -51,9 +51,23 @@ class NeoDatabase:
         elif method_name == 'LabelPropagation':
             self.graph.run('call algo.labelPropagation.stream(null, "%s", { iterations: 10}) yield nodeId, label match (n) where id(n) = nodeId set n.setId = setId' % relationship_name).data()
 
-        self.save_nodes_attributes()
+        for node_data in self.get_nodes_id():
+            node_id = node_data['nodeId']
+            print('NodeId')
+            print(node_id)
+            result_inner_data = self.get_inner_community_neighbors_of_node_amount(node_id)
+            print(result_inner_data)
+            print(type(result_inner_data))
+            node = result_inner_data['n']
+            inner_community_neighbors_amount = result_inner_data['innerCommunityNeighborsAmount']
+            node['innerCommunityNeighborsAmount'] = inner_community_neighbors_amount
+            self.update_data(node)
+            result_outer_data = self.get_outer_community_neighbors_of_node_amount(node_id)
+            outer_community_neighbors_amount = result_outer_data['outerCommunityNeighborsAmount']
+            node['outerCommunityNeighborsAmount'] = outer_community_neighbors_amount
+            self.update_data(node)
 
-        # call algo.louvain.stream(null, "RELATED") yield nodeId, community match (n) where id(n) = nodeId set n.communiy = community
+        self.save_nodes_attributes()
 
     def save_dataset(self, dataset_name: str, directory: str, relationship_name: str):
         """
@@ -90,6 +104,32 @@ class NeoDatabase:
     def get_neighbors_of_node(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return m' % node_id)
 
+    def get_nodes_id(self):
+        return self.graph.run('match (n) return id(n) as nodeId')
+
+    def get_neighbors_of_node_amount(self, node_id: int):
+        return self.graph.run('match (n)--(m) where id(n) = %s return count(m)' % node_id)
+
+    def get_inner_community_neighbors_of_node_amount(self, node_id: int):
+        result = self.graph.run('match (n)--(m) where id(n) = %s and n.community = m.community  return n, count(m) as innerCommunityNeighborsAmount' % node_id)\
+            .data()
+
+        if result:
+            return result[0]
+
+        node = self.get_node_by_id(node_id)
+        return {'n': node, 'innerCommunityNeighborsAmount': 0}
+
+    def get_outer_community_neighbors_of_node_amount(self, node_id: int):
+        result = self.graph.run('match (n)--(m) where id(n) = %s and n.community <> m.community return n, count(m) as outerCommunityNeighborsAmount' % node_id)\
+            .data()
+
+        if result:
+            return result[0]
+
+        node = self.get_node_by_id(node_id)
+        return {'n': node, 'outerCommunityNeighborsAmount': 0}
+
     def get_nodes_attributes(self):
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())
 
@@ -108,9 +148,10 @@ class NeoDatabase:
             attributes = self.laplacian_score(community, attributes, percentile)
 
         select_query = ft.reduce(lambda x, y: x + y, ['n.' + attribute + ' as ' + attribute + ', ' for attribute in attributes])
-        end_select_query = 'id(n) as nodeId '
+        # end_select_query = 'n.innerCommunityNeighborsAmount as innerCommunityNeighborsAmount, n.outerCommunityNeighborsAmount as outerCommunityNeighborsAmount, id(n) as nodeId'
+        end_select_query = 'id(n) as nodeId'
         select_query += end_select_query
-        return self.graph.run('match (n) where n.community = %s return ' % community + select_query )
+        return self.graph.run('match (n) where n.community = %s return ' % community + select_query)
 
     def get_community_len(self, community: int):
         return self.graph.run('match (n) where n.community = %s return count(n)' % community).evaluate()
@@ -151,8 +192,6 @@ class NeoDatabase:
         self.graph.push(data)
 
     def save_nodes_attributes(self):
-        print('Attributes')
-        print(self.get_nodes_attributes())
         self.data_sets[self.current_dataset]['attributes'] = self.get_nodes_attributes()
         with open(self.data_sets_registry_directory, 'wt', encoding='utf8') as data_sets_registry:
             json.dump(self.data_sets, data_sets_registry)
@@ -174,9 +213,13 @@ if __name__ == '__main__':
     # print(database.data_sets)
     # louvain_result = database.apply_method('Louvain')
 
+    n = database.get_node_by_id(1854)
+    dict = {'n': n}
+    dict['amount'] = 0
+    print(dict)
 
-    result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
-    print(result)
+    # result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
+    # print(result)
 
 #endregion
 
