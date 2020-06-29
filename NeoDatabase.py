@@ -67,6 +67,14 @@ class NeoDatabase:
             node['outerCommunityNeighborsAmount'] = outer_community_neighbors_amount
             self.update_data(node)
 
+            neighbors_community_vector = []
+            for community in range(self.get_number_of_communities()):
+                neighbors_community_vector.append(self.get_specific_community_neighbors_amount(node_id, community))
+                print(neighbors_community_vector)
+                print(type(neighbors_community_vector[0]))
+            node['neighborsCommunityVector'] = neighbors_community_vector
+            self.update_data(node)
+
         self.save_nodes_attributes()
 
     def save_dataset(self, dataset_name: str, directory: str, relationship_name: str):
@@ -129,6 +137,9 @@ class NeoDatabase:
 
         node = self.get_node_by_id(node_id)
         return {'n': node, 'outerCommunityNeighborsAmount': 0}
+
+    def get_specific_community_neighbors_amount(self, node_id:int, community:int):
+        return self.graph.run('match (n)--(m) where id(n) = %s and m.community = %s return count(m)' % (node_id, community)).evaluate()
 
     def get_nodes_attributes(self):
         return list(self.graph.run('match (n) return n limit 1').evaluate().keys())

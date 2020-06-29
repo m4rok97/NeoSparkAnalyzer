@@ -57,10 +57,19 @@ def glance(community: list):
         ans.append((node_i['nodeId'], anomaly_score))
     return ans
 
+def pseudo_CADA(community):
+    ans = []
+    for node in community:
+        ans.append((node['nodeId'], node['outerCommunityNeighborsAmount'] / node['innerCommunityNeighborsAmount']))
 
 def CADA(community):
     ans = []
     for node in community:
-        ans.append((node['nodeId'], node['outerCommunityNeighborsAmount'] / node['innerCommunityNeighborsAmount']))
+        max_neighbors_in_same_community = max(node['neighborsCommunityVector'])
+        score_sum = 0
+        for neighbors_amount in node['neighborsCommunityVector']:
+            score_sum += neighbors_amount / max_neighbors_in_same_community
+        ans.append((node['nodeId'], score_sum))
     return ans
-#endregion\
+
+#endregion

@@ -10,7 +10,10 @@ import numpy as np
 
 
 class NeoSparkAnalyzer:
-
+    """
+    Class that represent the main Analyzer Framework.Whit it you can perfrom comunty detection over
+    graph after dafining the datasets path
+    """
     def __init__(self, database_directory: str, database_password: str):
         self.database = NeoDatabase(database_directory, database_password)
         self.spark_context = pyspark.SparkContext('local[*]', appName="SparkAnalyzer")
@@ -56,7 +59,7 @@ if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     analyzer.database.load_dataset('Disney')
     analyzer.get_communities_with_method('Louvain')
-    analyzer.analyze('CADA', ['outerCommunityNeighborsAmount', 'innerCommunityNeighborsAmount'])
+    analyzer.analyze('CADA', ['neighborsCommunityVector'])
     analyzer.database.set_anomaly_label(0.9)
 
 # endregion
