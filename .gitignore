@@ -108,3 +108,4 @@ target/
 
 # My ignores
 Testing/
+/Databases_Readers/BitCoin/dict.txt
