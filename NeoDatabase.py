@@ -23,7 +23,7 @@ class NeoDatabase:
         with open(self.data_sets_registry_directory, 'rt', encoding='utf8') as data_sets_registry:
             self.data_sets = json.load(data_sets_registry)
 
-        self.graph = Graph(password=database_password)
+        self.graph = Graph(password=database_password, port=11004, max_connections=1000000)
         self.current_dataset = ''
 
     def load_dataset(self, data_set_name):
@@ -40,9 +40,8 @@ class NeoDatabase:
         self.current_dataset = ''
 
     def apply_community_method(self, method_name='Louvain'):
-        print(self.current_dataset)
-        print(self.data_sets)
         relationship_name = self.data_sets[self.current_dataset]['relationship_name']
+        # relationship_name = 'RELATED'
 
         if method_name == 'Louvain':
             self.graph.run('call algo.louvain.stream(null, "%s") yield nodeId, community match (n) where id(n) = nodeId set n.community = community' % relationship_name).data()
@@ -53,11 +52,7 @@ class NeoDatabase:
 
         for node_data in self.get_nodes_id():
             node_id = node_data['nodeId']
-            print('NodeId')
-            print(node_id)
             result_inner_data = self.get_inner_community_neighbors_of_node_amount(node_id)
-            print(result_inner_data)
-            print(type(result_inner_data))
             node = result_inner_data['n']
             inner_community_neighbors_amount = result_inner_data['innerCommunityNeighborsAmount']
             node['innerCommunityNeighborsAmount'] = inner_community_neighbors_amount
@@ -70,8 +65,6 @@ class NeoDatabase:
             neighbors_community_vector = []
             for community in range(self.get_number_of_communities()):
                 neighbors_community_vector.append(self.get_specific_community_neighbors_amount(node_id, community))
-                print(neighbors_community_vector)
-                print(type(neighbors_community_vector[0]))
             node['neighborsCommunityVector'] = neighbors_community_vector
             self.update_data(node)
 
@@ -115,6 +108,12 @@ class NeoDatabase:
     def get_nodes_id(self):
         return self.graph.run('match (n) return id(n) as nodeId')
 
+    def get_nodes_without_inner_community_neighbors(self):
+        return self.graph.run('match (n) where n.innerCommunityNeighborsAmount is null  return id(n) as nodeId')
+
+    def get_nodes_without_inner_community_neighbors_amount(self):
+        return self.graph.run('match (n) where n.innerCommunityNeighborsAmount is null  return count(n)').evaluate()
+
     def get_neighbors_of_node_amount(self, node_id: int):
         return self.graph.run('match (n)--(m) where id(n) = %s return count(m)' % node_id)
 
@@ -138,7 +137,7 @@ class NeoDatabase:
         node = self.get_node_by_id(node_id)
         return {'n': node, 'outerCommunityNeighborsAmount': 0}
 
-    def get_specific_community_neighbors_amount(self, node_id:int, community:int):
+    def  get_specific_community_neighbors_amount(self, node_id:int, community:int):
         return self.graph.run('match (n)--(m) where id(n) = %s and m.community = %s return count(m)' % (node_id, community)).evaluate()
 
     def get_nodes_attributes(self):
@@ -215,22 +214,35 @@ if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     # database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml', '_default')
     # database.save_dataset('Airlines', 'C:/Users/Administrator/Desktop/airlines.graphml', 'RELATED')
+    # database.save_dataset('Bitcoin', 'C:/Users/Administrator/Documents/School Work/Tesis/Implementation/NeoSparkFramework/Databases_Readers/BitCoin/Bitcoin_2013.graphml', 'RELATED')
 
     # database.load_dataset('Disney')
     # database.unload_current_dataset()
     # database.load_dataset('Airlines')
+    # database.load_dataset('Bitcoin')
 
     # print(database.current_dataset)
     # print(database.data_sets)
     # louvain_result = database.apply_method('Louvain')
 
-    n = database.get_node_by_id(1854)
-    dict = {'n': n}
-    dict['amount'] = 0
-    print(dict)
-
     # result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
     # print(result)
+    while database.get_nodes_without_inner_community_neighbors_amount() > 0:
+        try:
+            for node_data in database.get_nodes_without_inner_community_neighbors\
+                        ():
+                node_id = node_data['nodeId']
+                print(node_id)
+                result_inner_data = database.get_inner_community_neighbors_of_node_amount(node_id)
+                node = result_inner_data['n']
+                inner_community_neighbors_amount = result_inner_data['innerCommunityNeighborsAmount']
+                node['innerCommunityNeighborsAmount'] = inner_community_neighbors_amount
+                database.update_data(node)
+
+        except:
+            pass
+
+
 
 #endregion
 
