@@ -35,8 +35,10 @@ def glance(community: list):
     average_differences = get_average_differences(community)
     community_len = len(community)
     ans = []
+    current = 1
 
     for node_i in community:
+        print('Node: ', current, '/ Total: ', community_len)
         attributes_scores = []
         node_i_id = node_i['nodeId']
         for attribute in filter(lambda x: x != 'nodeId', node_i):
@@ -55,6 +57,7 @@ def glance(community: list):
             attributes_scores.append(attribute_score)
         anomaly_score = max(attributes_scores)
         ans.append((node_i['nodeId'], anomaly_score))
+        current += 1
     return ans
 
 def pseudo_CADA(community):
