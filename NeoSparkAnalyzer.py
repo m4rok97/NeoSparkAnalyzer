@@ -17,6 +17,7 @@ class NeoSparkAnalyzer:
     def __init__(self, database_directory: str, database_password: str):
         self.database = NeoDatabase(database_directory, database_password)
         self.spark_context = pyspark.SparkContext('local[*]', appName="SparkAnalyzer")
+        # self.spark_context = None
         self.average_differences = []
         self.select_attributes = []
 
@@ -31,6 +32,22 @@ class NeoSparkAnalyzer:
 
     def get_communities_with_method(self, method_name: str):
         self.database.apply_community_method(method_name)
+
+    @staticmethod
+    def apply_CADA():
+        analyzer.analyze('CADA', ['neighborsCommunityVector'])
+
+    @staticmethod
+    def apply_InterScore():
+        analyzer.analyze('Glance', ['innerCommunityNeighborsAmount'])
+
+    @staticmethod
+    def apply_SubSpaceGlance():
+        analyzer.analyze('Glance', [], use_feature_selection=True)
+
+    @staticmethod
+    def apply_Glance_with_all_attributes():
+        analyzer.analyze('Glance', [])
 
     def analyze(self, method: str, selected_attributes: list, use_feature_selection=False, percentile=0.1):
         # Select Method
@@ -57,9 +74,13 @@ class NeoSparkAnalyzer:
 
 if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
-    analyzer.database.load_dataset('Disney')
-    analyzer.get_communities_with_method('Louvain')
-    analyzer.analyze('CADA', ['neighborsCommunityVector'])
-    analyzer.database.set_anomaly_label(0.9)
+    # analyzer.database.load_dataset('Bitcoin')
+    # print(analyzer.database.current_dataset)
+
+    # analyzer.get_communities_with_method('Louvain')
+    # print(analyzer.database.current_dataset)
+    # analyzer.analyze('CADA', ['neighborsCommunityVector'])
+    # analyzer.database.set_anomaly_label(0.9)
+    analyzer.apply_InterScore()
 
 # endregion
