@@ -109,3 +109,4 @@ target/
 # My ignores
 Testing/
 /Databases_Readers/BitCoin/dict.txt
+/Databases_Readers/BitCoin/Bitcoin_2013.graphml
