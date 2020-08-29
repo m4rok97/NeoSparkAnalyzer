@@ -120,3 +120,5 @@ Testing/
 /bitcoin_cada_result.json
 /bitcoin_neighbors_community_vector_dictionary.json
 /bitcoin_neighbors_pairs.json
+/bitcoin_pair_ids_dictionary.json
+/bitcoin_pair_ids_dictionary_inverted.json
