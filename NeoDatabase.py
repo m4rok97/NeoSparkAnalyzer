@@ -23,12 +23,11 @@ class NeoDatabase:
         with open(self.data_sets_registry_directory, 'rt', encoding='utf8') as data_sets_registry:
             self.data_sets = json.load(data_sets_registry)
 
-        # self.graph = Graph(password=database_password, port=11004, max_connections=1000000)
-        self.graph = None
+        self.graph = Graph(password=database_password, port=11011, max_connections=1000000)
         self.current_dataset = ''
 
     def load_dataset(self, data_set_name):
-        if not self.current_dataset:
+        if self.current_dataset:
             self.unload_current_dataset()
         if data_set_name in self.data_sets:
             self.graph.run('call apoc.import.graphml(\'%s\', {readLabels: true, storeNodeIds: true})' % self.data_sets[data_set_name]['directory'])
@@ -348,12 +347,16 @@ class NeoDatabase:
             score = 0
             max_value = max(neighbors_community_vector)
             for community_value in neighbors_community_vector:
-                score += community_value
+                if max_value != 0:
+                    score += community_value / max_value
 
             bitcoin_cada_result[node_id] = score
             current += 1
 
-        database.save_cache_dictionary(bitcoin_cada_result, 'bitcoin_cada_result')
+        self.save_cache_dictionary(bitcoin_cada_result, 'bitcoin_cada_result')
+
+    def get_ids_pairs(self):
+        return self.graph.run('match (n) return id(n), n.id')
 
 #endregion
 
@@ -468,6 +471,18 @@ if __name__ == '__main__':
     #
     # database.fill_cache_dictionary_with_value('bitcoin_neighbors_pairs', [])
 
+    current = 0
+    pair_ids_dictionary = {}
+    pair_ids_dictionary_inverted = {}
+    for pair_id in database.get_ids_pairs():
+        print(current)
+        neo_id = pair_id['id(n)']
+        real_id = pair_id['n.id']
+        pair_ids_dictionary[neo_id] = real_id
+        pair_ids_dictionary_inverted[real_id] = neo_id
+        current += 1
 
+    database.save_cache_dictionary(pair_ids_dictionary, 'bitcoin_pair_ids_dictionary')
+    database.save_cache_dictionary(pair_ids_dictionary_inverted, 'bitcoin_pair_ids_dictionary_inverted')
 #endregion
 
