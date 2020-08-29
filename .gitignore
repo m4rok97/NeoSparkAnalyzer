@@ -111,3 +111,12 @@ Testing/
 /Databases_Readers/BitCoin/dict.txt
 /Databases_Readers/BitCoin/Bitcoin_2013.graphml
 /Databases/
+/bitcoin_community_data.json
+/bitcoin_community_nodes.json
+/bitcoin_inner_community.json
+/bitcoin_node_community.json
+/bitcoin_outer_community.json
+/result.json
+/bitcoin_cada_result.json
+/bitcoin_neighbors_community_vector_dictionary.json
+/bitcoin_neighbors_pairs.json
