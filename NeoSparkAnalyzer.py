@@ -39,7 +39,7 @@ class NeoSparkAnalyzer:
 
     @staticmethod
     def apply_InterScore():
-        analyzer.analyze('Glance', ['innerCommunityNeighborsAmount'])
+        analyzer.analyze('Glance', ['outerCommunityNeighborsAmount'], use_cache_data=True)
 
     @staticmethod
     def apply_SubSpaceGlance():
@@ -49,7 +49,7 @@ class NeoSparkAnalyzer:
     def apply_Glance_with_all_attributes():
         analyzer.analyze('Glance', [])
 
-    def analyze(self, method: str, selected_attributes: list, use_feature_selection=False, percentile=0.1):
+    def analyze(self, method: str, selected_attributes: list, use_feature_selection=False, percentile=0.1, use_cache_data=False):
         # Select Method
         anomaly_algorithm = None
         if method == 'Glance':
@@ -57,16 +57,19 @@ class NeoSparkAnalyzer:
         if method == 'CADA':
             anomaly_algorithm = CADA
 
-        anomaly_score = []
-        result = self.spark_context.parallelize(self.database.get_communities(selected_attributes, use_feature_selection, percentile))\
+        anomaly_score_dict = {}
+        result = self.spark_context.parallelize(self.database.get_communities(selected_attributes, use_feature_selection, percentile, use_cache_data))\
             .map(anomaly_algorithm).collect()
 
         for community in result:
             for node_id, anomaly_score in community:
-                node = self.database.get_node_by_id(node_id)
-                node['anomalyScore'] = anomaly_score
-                self.database.update_data(node)
+                # node = self.database.get_node_by_id(node_id)
+                # node['anomalyScore'] = anomaly_score
+                # self.database.update_data(node)
+                anomaly_score_dict[node_id] = anomaly_score
 
+        with open('result.json', 'wt', encoding='utf8') as file:
+            json.dump(anomaly_score_dict, file)
 # endregion
 
 # region Main
