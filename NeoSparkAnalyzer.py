@@ -4,6 +4,7 @@ from pyspark.sql.types import *
 from AnomalyDetection import *
 from NeoDatabase import *
 import pyspark
+import time as tm
 import numpy as np
 
 # region NeoSaprk Analyzer Class
@@ -68,7 +69,7 @@ class NeoSparkAnalyzer:
                 # self.database.update_data(node)
                 anomaly_score_dict[node_id] = anomaly_score
 
-        with open('result.json', 'wt', encoding='utf8') as file:
+        with open('testing_result.json', 'wt', encoding='utf8') as file:
             json.dump(anomaly_score_dict, file)
 # endregion
 
@@ -79,11 +80,19 @@ if __name__ == '__main__':
     analyzer = NeoSparkAnalyzer('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
     # analyzer.database.load_dataset('Bitcoin')
     # print(analyzer.database.current_dataset)
-
-    # analyzer.get_communities_with_method('Louvain')
+    t = tm.time()
+    analyzer.get_communities_with_method('Louvain')
     # print(analyzer.database.current_dataset)
     # analyzer.analyze('CADA', ['neighborsCommunityVector'])
     # analyzer.database.set_anomaly_label(0.9)
-    analyzer.apply_InterScore()
+    # analyzer.apply_InterScore()
 
+    # analyzer.analyze('Glance', ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
+    # analyzer.apply_Glance_with_all_attributes()
+    analyzer.apply_SubSpaceGlance()
+    t = tm.time() - t
+    print(t)
+
+    # from  disney_experiments import test_disney
+    # test_disney()
 # endregion

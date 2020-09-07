@@ -238,17 +238,29 @@ def create_users_network_from_json_files_in_database(address_user_dict, files_fo
     return graph
 
 if __name__ == '__main__':
-    files_path = 'C:/Users/Administrator/Documents/School Work/Tesis/Implementation/NeoSparkFramework/Databases/Bitcoin/'
+    # files_path = 'C:/Users/Administrator/Documents/School Work/Tesis/Implementation/NeoSparkFramework/Databases/Bitcoin/'
     # address_graph = create_addresses_relation_network_from_json_file(files_path)
     # connected_components = get_list_of_connected_components(address_graph)
     # dictionary = create_address_user_dictionary(connected_components)
     # save_address_user_dict_to_file(dictionary, 'dict.txt')
     dictionary = read_address_user_dict_from_file('dict.txt')
+    # i = 0
+    # for key in dictionary:
+    #     if i > 15:
+    #         break
+    #     print(key, ' ' ,dictionary[key])
+    #     i += 1
+    print(dictionary['13udyfBcdA2PUDCFM69VYDEHRRFnqkjEkx'])
+    print(dictionary['1MsmThtteKPu6fWxwn2SMDEnmJex3vKSBk'])
+    print(dictionary['152Yd71xMDzVntyD86xWgag5jfeNmyhMyS'])
+    print(dictionary['1KdPv6GWpg6eoj6cxcV65uc1NwufvhtGGQ'])
+
+
     # graph = Graph(password="Lenin.41", port=11004)
     # graph.delete_all()
-    graph = create_users_network_from_json_files(dictionary, files_path)
-
-    nx.write_graphml(graph, 'graph.graphml')
+    # graph = create_users_network_from_json_files(dictionary, files_path)
+    #
+    # nx.write_graphml(graph, 'graph.graphml')
 
 
 

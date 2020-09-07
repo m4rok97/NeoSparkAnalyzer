@@ -24,8 +24,9 @@ def get_average_difference(community: list, attribute: str):
 
 def get_average_differences(community: list):
     differences = {}
-    for attribute in filter(lambda x: x != 'nodeId', community[0]):
+    for attribute in filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', community[0]):
         differences[attribute] = get_average_difference(community, attribute)
+    print(differences)
     return differences
 
 def get_inter_neighbors_difference(community: list):
@@ -41,7 +42,7 @@ def glance(community: list):
         print('Node: ', current, '/ Total: ', community_len)
         attributes_scores = []
         node_i_id = node_i['nodeId']
-        for attribute in filter(lambda x: x != 'nodeId', node_i):
+        for attribute in filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', node_i):
             average_difference = average_differences[attribute]
             acc = 0
             for node_j in community:

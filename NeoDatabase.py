@@ -6,6 +6,8 @@ import os
 import functools as ft
 import numpy as np
 from skfeature.utility.construct_W import construct_W
+from sklearn.decomposition import PCA
+import skfeature.function.similarity_based.SPEC as SPEC
 
 #region NeoDatabase Class
 
@@ -40,8 +42,8 @@ class NeoDatabase:
         self.current_dataset = ''
 
     def apply_community_method(self, method_name='Louvain'):
-        relationship_name = self.data_sets[self.current_dataset]['relationship_name']
-        # relationship_name = 'RELATED'
+        # relationship_name = self.data_sets[self.current_dataset]['relationship_name']
+        relationship_name = '_default'
 
         if method_name == 'Louvain':
             self.graph.run('call algo.louvain.stream(null, "%s") yield nodeId, community match (n) where id(n) = nodeId set n.community = community' % relationship_name).data()
@@ -49,26 +51,26 @@ class NeoDatabase:
             self.graph.run('call algo.unionFind.stream(null, "%s") yield nodeId, setId match (n) where id(n) = nodeId set n.setId = setId' % relationship_name).data()
         elif method_name == 'LabelPropagation':
             self.graph.run('call algo.labelPropagation.stream(null, "%s", { iterations: 10}) yield nodeId, label match (n) where id(n) = nodeId set n.setId = setId' % relationship_name).data()
-
-        for node_data in self.get_nodes_id():
-            node_id = node_data['nodeId']
-            result_inner_data = self.get_inner_community_neighbors_of_node_amount(node_id)
-            node = result_inner_data['n']
-            inner_community_neighbors_amount = result_inner_data['innerCommunityNeighborsAmount']
-            node['innerCommunityNeighborsAmount'] = inner_community_neighbors_amount
-            self.update_data(node)
-            result_outer_data = self.get_outer_community_neighbors_of_node_amount(node_id)
-            outer_community_neighbors_amount = result_outer_data['outerCommunityNeighborsAmount']
-            node['outerCommunityNeighborsAmount'] = outer_community_neighbors_amount
-            self.update_data(node)
-
-            neighbors_community_vector = []
-            for community in range(self.get_number_of_communities()):
-                neighbors_community_vector.append(self.get_specific_community_neighbors_amount(node_id, community))
-            node['neighborsCommunityVector'] = neighbors_community_vector
-            self.update_data(node)
-
-        self.save_nodes_attributes()
+        #
+        # for node_data in self.get_nodes_id():
+        #     node_id = node_data['nodeId']
+        #     result_inner_data = self.get_inner_community_neighbors_of_node_amount(node_id)
+        #     node = result_inner_data['n']
+        #     inner_community_neighbors_amount = result_inner_data['innerCommunityNeighborsAmount']
+        #     node['innerCommunityNeighborsAmount'] = inner_community_neighbors_amount
+        #     self.update_data(node)
+        #     result_outer_data = self.get_outer_community_neighbors_of_node_amount(node_id)
+        #     outer_community_neighbors_amount = result_outer_data['outerCommunityNeighborsAmount']
+        #     node['outerCommunityNeighborsAmount'] = outer_community_neighbors_amount
+        #     self.update_data(node)
+        #
+        #     neighbors_community_vector = []
+        #     for community in range(self.get_number_of_communities()):
+        #         neighbors_community_vector.append(self.get_specific_community_neighbors_amount(node_id, community))
+        #     node['neighborsCommunityVector'] = neighbors_community_vector
+        #     self.update_data(node)
+        #
+        # self.save_nodes_attributes()
 
 
     def get_inner_community_neighbors_amount_dictionary(self):
@@ -173,8 +175,9 @@ class NeoDatabase:
                                   'nodeId' % community)
 
         if use_laplacian_score:
-            attributes = self.laplacian_score(community, attributes, percentile)
-
+            attributes = list(filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', attributes))
+            attributes = self.spec(community, attributes, percentile)
+            print(attributes)
         select_query = ft.reduce(lambda x, y: x + y, ['n.' + attribute + ' as ' + attribute + ', ' for attribute in attributes])
         # end_select_query = 'n.innerCommunityNeighborsAmount as innerCommunityNeighborsAmount, n.outerCommunityNeighborsAmount as outerCommunityNeighborsAmount, id(n) as nodeId'
         end_select_query = 'id(n) as nodeId'
@@ -190,8 +193,12 @@ class NeoDatabase:
     def set_anomaly_label(self, threshold: float):
         self.graph.run('match (n) where n.anomalyScore > %s set n:Rare' % threshold)
 
-    def laplacian_score(self, community:int, attributes: list, percentile=0.1):
+    def laplacian_score(self, community:int, attributes: list, percentile=0):
         result = []
+        percentile = 0.1
+        attributes = list(filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', attributes))
+        print(len(attributes))
+        print('Attributes ', attributes)
         nodes_amount = self.get_nodes_amount_of_community(community)
         community_as_matrix = np.empty((nodes_amount, len(attributes)))
         community_nodes = self.get_community_nodes(community)
@@ -206,10 +213,50 @@ class NeoDatabase:
         else:
             w_matrix = construct_W(community_as_matrix, k=(nodes_amount - 1))
 
+        # w_matrix = construct_W(community_as_matrix)
+
         scores = lap_score(community_as_matrix, W=w_matrix)
         ranked_attributes = feature_ranking(scores)
         boundary = len(attributes) * percentile
+        # boundary = 1
+        print('Percentile ' , percentile)
+        print('Boundary ', boundary)
+        print('Ranked attributes ', ranked_attributes)
+        for i in range(len(attributes)):
+            if ranked_attributes[i] < boundary:
+                result.append(attributes[i])
 
+        return result
+
+    def spec(self, community:int, attributes: list, percentile=0):
+        result = []
+        percentile = 0.1
+        attributes = list(filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', attributes))
+        print(len(attributes))
+        print('Attributes ', attributes)
+        nodes_amount = self.get_nodes_amount_of_community(community)
+        community_as_matrix = np.empty((nodes_amount, len(attributes)))
+        community_nodes = self.get_community_nodes(community)
+        node_index = 0
+        for node in community_nodes:
+            for attribute_index in range(len(attributes)):
+                community_as_matrix[node_index, attribute_index] = node[attributes[attribute_index]]
+            node_index += 1
+
+        if nodes_amount >= 5:
+            w_matrix = construct_W(community_as_matrix)
+        else:
+            w_matrix = construct_W(community_as_matrix, k=(nodes_amount - 1))
+
+        # w_matrix = construct_W(community_as_matrix)
+
+        scores = SPEC.spec(community_as_matrix, W=w_matrix)
+        ranked_attributes = feature_ranking(scores)
+        boundary = len(attributes) * percentile
+        # boundary = 1
+        print('Percentile ', percentile)
+        print('Boundary ', boundary)
+        print('Ranked attributes ', ranked_attributes)
         for i in range(len(attributes)):
             if ranked_attributes[i] < boundary:
                 result.append(attributes[i])
@@ -357,6 +404,7 @@ class NeoDatabase:
 
     def get_ids_pairs(self):
         return self.graph.run('match (n) return id(n), n.id')
+    
 
 #endregion
 
@@ -364,6 +412,7 @@ class NeoDatabase:
 
 if __name__ == '__main__':
     database = NeoDatabase('C:/Users/Administrator/.Neo4jDesktop/neo4jDatabases/database-460cb81a-07d5-4d10-b7f3-5ebba2c058df/installation-3.5.0', 'Lenin.41')
+    # database.graph.delete_all()
     # database.save_dataset('Disney', 'C:/Users/Administrator/Desktop/Disney.graphml', '_default')
     # database.save_dataset('Airlines', 'C:/Users/Administrator/Desktop/airlines.graphml', 'RELATED')
     # database.save_dataset('Bitcoin', 'C:/Users/Administrator/Documents/School Work/Tesis/Implementation/NeoSparkFramework/Databases_Readers/BitCoin/Bitcoin_2013.graphml', 'RELATED')
@@ -376,6 +425,8 @@ if __name__ == '__main__':
     # print(database.current_dataset)
     # print(database.data_sets)
     # louvain_result = database.apply_method('Louvain')
+
+    # database.apply_community_method()
 
     # result = database.laplacian_score(0, ['MinPriceUsedItem', 'MinPricePrivateSeller', 'Avg_Helpful', 'Avg_Rating'])
     # print(result)
@@ -471,18 +522,38 @@ if __name__ == '__main__':
     #
     # database.fill_cache_dictionary_with_value('bitcoin_neighbors_pairs', [])
 
-    current = 0
-    pair_ids_dictionary = {}
-    pair_ids_dictionary_inverted = {}
-    for pair_id in database.get_ids_pairs():
-        print(current)
-        neo_id = pair_id['id(n)']
-        real_id = pair_id['n.id']
-        pair_ids_dictionary[neo_id] = real_id
-        pair_ids_dictionary_inverted[real_id] = neo_id
-        current += 1
+    # current = 0
+    # pair_ids_dictionary = {}
+    # pair_ids_dictionary_inverted = {}
+    # for pair_id in database.get_ids_pairs():
+    #     print(current)
+    #     neo_id = pair_id['id(n)']
+    #     real_id = pair_id['n.id']
+    #     pair_ids_dictionary[neo_id] = real_id
+    #     pair_ids_dictionary_inverted[real_id] = neo_id
+    #     current += 1
+    #
+    # database.save_cache_dictionary(pair_ids_dictionary, 'disney_pair_ids_dictionary')
+    # database.save_cache_dictionary(pair_ids_dictionary_inverted, 'disney_pair_ids_dictionary_inverted')
 
-    database.save_cache_dictionary(pair_ids_dictionary, 'bitcoin_pair_ids_dictionary')
-    database.save_cache_dictionary(pair_ids_dictionary_inverted, 'bitcoin_pair_ids_dictionary_inverted')
+    # dictionary = database.load_cache_dictionary('bitcoin_pair_ids_dictionary_inverted')
+    # print(dictionary['44973'])
+    # print(dictionary['93321'])
+    # print(dictionary['253'])
+    # print(dictionary['15'])
+
+    dictionary = database.load_cache_dictionary('bitcoin_cada_result')
+    normalized_cada = {}
+
+    min_score = min(dictionary.values())
+    max_score = max(dictionary.values())
+
+    print(min_score)
+    print(max_score)
+
+    for node_id in dictionary:
+        normalized_cada[node_id] = dictionary[node_id] / max_score
+
+    database.save_cache_dictionary(normalized_cada, 'bitcoin_cada_result_normalized')
 #endregion
 
