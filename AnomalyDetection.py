@@ -24,8 +24,9 @@ def get_average_difference(community: list, attribute: str):
 
 def get_average_differences(community: list):
     differences = {}
-    for attribute in filter(lambda x: x != 'nodeId', community[0]):
+    for attribute in filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', community[0]):
         differences[attribute] = get_average_difference(community, attribute)
+    print(differences)
     return differences
 
 def get_inter_neighbors_difference(community: list):
@@ -35,11 +36,13 @@ def glance(community: list):
     average_differences = get_average_differences(community)
     community_len = len(community)
     ans = []
+    current = 1
 
     for node_i in community:
+        print('Node: ', current, '/ Total: ', community_len)
         attributes_scores = []
         node_i_id = node_i['nodeId']
-        for attribute in filter(lambda x: x != 'nodeId', node_i):
+        for attribute in filter(lambda x: x != 'nodeId' and x != 'id' and x != 'community', node_i):
             average_difference = average_differences[attribute]
             acc = 0
             for node_j in community:
@@ -55,12 +58,22 @@ def glance(community: list):
             attributes_scores.append(attribute_score)
         anomaly_score = max(attributes_scores)
         ans.append((node_i['nodeId'], anomaly_score))
+        current += 1
     return ans
 
+def pseudo_CADA(community):
+    ans = []
+    for node in community:
+        ans.append((node['nodeId'], node['outerCommunityNeighborsAmount'] / node['innerCommunityNeighborsAmount']))
 
 def CADA(community):
     ans = []
     for node in community:
-        ans.append((node['nodeId'], node['outerCommunityNeighborsAmount'] / node['innerCommunityNeighborsAmount']))
+        max_neighbors_in_same_community = max(node['neighborsCommunityVector'])
+        score_sum = 0
+        for neighbors_amount in node['neighborsCommunityVector']:
+            score_sum += neighbors_amount / max_neighbors_in_same_community
+        ans.append((node['nodeId'], score_sum))
     return ans
-#endregion\
+
+#endregion

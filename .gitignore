@@ -108,3 +108,27 @@ target/
 
 # My ignores
 Testing/
+/Databases_Readers/BitCoin/dict.txt
+/Databases_Readers/BitCoin/Bitcoin_2013.graphml
+/Databases/
+/bitcoin_community_data.json
+/bitcoin_community_nodes.json
+/bitcoin_inner_community.json
+/bitcoin_node_community.json
+/bitcoin_outer_community.json
+/result.json
+/bitcoin_cada_result.json
+/bitcoin_neighbors_community_vector_dictionary.json
+/bitcoin_neighbors_pairs.json
+/bitcoin_pair_ids_dictionary.json
+/bitcoin_pair_ids_dictionary_inverted.json
+/bitcoin_cada_result_normalized.json
+/disney_glance_all_result.json
+/disney_glance_result.json
+/disney_pair_ids_dictionary.json
+/disney_pair_ids_dictionary_inverted.json
+/disney_subspace_glance_result.json
+/Inexpert Glance  ROC.png
+/laplacian.png
+/spec.png
+/testing_result.json
